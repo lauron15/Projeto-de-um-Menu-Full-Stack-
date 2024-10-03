@@ -3,6 +3,7 @@ using Foods.Util;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore; // Importar para usar ToListAsync
 
 namespace Foods.Controllers
 {
@@ -12,7 +13,7 @@ namespace Foods.Controllers
     {
         private readonly AppDatabase _context;
         public FoodController(AppDatabase context)
-        {    
+        {
             _context = context;
         }
 
@@ -20,35 +21,43 @@ namespace Foods.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<Food>>> listarFoods()
         {
-            var listarFood = _context.foods.ToList();
-            return listarFood;
+            var listarFood = await _context.foods.ToListAsync(); // Usar ToListAsync
+            return Ok(listarFood); // Retornar OK
         }
+     
 
         [HttpPost]
         [AllowAnonymous]
-        public async Task<IActionResult>PostFood(Food foods)
+        public ActionResult<Food> PostFood(Food foods)
         {
-           _context.foods.Add(foods);
-            await _context.SaveChangesAsync();
+            if (foods == null)
+            {
+                return BadRequest("Food cannot be null."); // Verificar se foods é nulo
+            }
+            _context.foods.Add(foods);
+             _context.SaveChanges();
             return CreatedAtAction("GetFood", new { id = foods.id }, foods);
         }
 
         [HttpPut("{id}")]
         [AllowAnonymous]
-        public async Task<IActionResult>PutFood(Food foods)
+        public async Task<IActionResult> PutFood(int id, Food foods)
         {
-            var foodAntiga = _context.foods.FirstOrDefault();
-            if (foodAntiga == null) {
+            var foodAntiga = await _context.foods.FirstOrDefaultAsync(f => f.id == id); // Buscar pelo id
+            if (foodAntiga == null)
+            {
                 return NotFound();
-                
             }
 
-            _context.foods.Remove(foodAntiga);
+           
+
+            _context.foods.Update(foodAntiga); // Atualizar a entidade
             await _context.SaveChangesAsync();
             return NoContent();
+       
         }
 
-     /*   [HttpDelete("{id}")]
+        [HttpDelete("{id}")]
         [AllowAnonymous]
         public async Task<IActionResult> DeleteFood(long id)
         {
@@ -66,8 +75,12 @@ namespace Foods.Controllers
         private bool ComidasExistente(int id)
         {
             return _context.foods.Any(e => e.id == id);
-        }*/
+        }
 
     }
 
 }
+
+
+
+    
