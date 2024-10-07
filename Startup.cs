@@ -13,6 +13,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Foods.Util;
+using Foods.Util;
 
 namespace Foods.Main
 {
@@ -28,11 +29,21 @@ namespace Foods.Main
 
         public void ConfigureServices(IServiceCollection services)
         {
-
             services.AddControllersWithViews()
-               .AddNewtonsoftJson(options =>
-               options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore
-           );
+                .AddNewtonsoftJson(options =>
+                options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore
+            );
+
+            // Configuração do Swagger
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+                {
+                    Version = "v1",
+                    Title = "FoodAPI",
+                    Description = "API Para adicionar e remover itens",
+                });
+            });
 
             var key = Encoding.ASCII.GetBytes(Settings.Secret);
 
@@ -52,9 +63,9 @@ namespace Foods.Main
                     ValidateAudience = false,
                     ValidateLifetime = false,
                     ClockSkew = TimeSpan.Zero,
-
                 };
             });
+
             services.AddAuthorization(options =>
             {
                 options.AddPolicy("user", policy => policy.RequireClaim("Store", "user"));
@@ -68,7 +79,6 @@ namespace Foods.Main
                                 .Build();
                 config.Filters.Add(new AuthorizeFilter(policy));
             }).SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
-
 
             var connection = Configuration["ConexaoMySql:MySqlConnectionString"];
             DbContextOptionsBuilder _options = new DbContextOptionsBuilder<AppDatabase>();
@@ -90,7 +100,6 @@ namespace Foods.Main
                 configuration.RootPath = "ClientApp/build";
             });
 
-
             // se o projeto react for fora da solução tenho que add cors para eu conseguir acessar as apis de qualquer lugar
             services.AddCors(options =>
             {
@@ -104,6 +113,7 @@ namespace Foods.Main
             });
         }
 
+
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
@@ -116,7 +126,16 @@ namespace Foods.Main
                 app.UseExceptionHandler("/Error");
             }
 
-            // se o projeto react for fora da solução tenho que add cors para eu conseguir acessar as apis de qualquer lugar
+            // Habilitar middleware para servir o Swagger JSON
+            app.UseSwagger();
+
+            // Habilitar middleware para servir a interface Swagger UI
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Foods API V1");
+                c.RoutePrefix = string.Empty; // Para exibir o Swagger na raiz
+            });
+
             app.UseCors("AllowSpecificOrigin");
             app.UseStaticFiles();
             app.UseSpaStaticFiles();
